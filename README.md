@@ -23,9 +23,6 @@
      git clone [https://github.com/scyprodigy/ev-parking.git](https://github.com/scyprodigy/ev-parking.git)
      
     安裝依賴：
-    
-    Bash
-    
     npm install
     
     設定環境變數：
@@ -34,12 +31,12 @@
     NEXT_PUBLIC_SUPABASE_URL=你的Supabase網址
     NEXT_PUBLIC_SUPABASE_ANON_KEY=你的Supabase金鑰
     GROQ_API_KEY=你的Groq金鑰
+    
     啟動開發伺服器：
-    
-    Bash
-    
     npm run dev
-    🔗 線上展示
+    
+
+##  🔗 線上展示
     正式環境網址: https://ev-parking.vercel.app
     
     Made by scyprodigy
