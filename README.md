@@ -40,3 +40,6 @@
     正式環境網址: https://ev-parking.vercel.app
     
     Made by scyprodigy
+
+## 註：
+到https://ev-parking.vercel.app/dashboard可以看到後台管理的雛形
