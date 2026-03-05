@@ -1,65 +1,67 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+import { useGetParkingLots } from '@/hooks/useGetParkingLots'
+import Link from 'next/link'
+
+export default function HomePage() {
+  const { lots, loading, error } = useGetParkingLots()
+
+  // 載入中狀態
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-500">載入中...</p>
     </div>
-  );
+  )
+
+  // 錯誤狀態，顯示錯誤訊息而不是讓頁面白屏
+  if (error) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-red-500">載入失敗：{error}</p>
+    </div>
+  )
+
+  return (
+    <main className="max-w-2xl mx-auto px-4 py-8">
+      {/* 標題區 */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">電動車停車場</h1>
+        <p className="text-gray-500 mt-1">選擇停車場查看即時車位</p>
+      </div>
+
+      {/* 停車場列表 */}
+      <div className="flex flex-col gap-4">
+        {lots.map(lot => {
+          // 計算滿位率，給用戶一個直觀的判斷
+          const occupancyRate = lot.total_spots > 0
+            ? Math.round((lot.total_spots / lot.total_spots) * 100)
+            : 0
+
+          return (
+            <Link key={lot.id} href={`/lots/${lot.id}`}>
+              <div className="border rounded-xl p-5 hover:shadow-md transition cursor-pointer bg-white">
+                {/* 停車場名稱與地址 */}
+                <h2 className="text-lg font-semibold text-gray-800">{lot.name}</h2>
+                <p className="text-sm text-gray-500 mt-1">{lot.address}</p>
+
+                {/* 車位資訊 */}
+                <div className="flex items-center gap-4 mt-3">
+                  <span className="text-sm text-gray-600">
+                    總車位：<strong>{lot.total_spots}</strong>
+                  </span>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                    即時查看
+                  </span>
+                </div>
+              </div>
+            </Link>
+          )
+        })}
+
+        {/* 沒有資料時的提示 */}
+        {lots.length === 0 && (
+          <p className="text-center text-gray-400 py-12">目前沒有停車場資料</p>
+        )}
+      </div>
+    </main>
+  )
 }
