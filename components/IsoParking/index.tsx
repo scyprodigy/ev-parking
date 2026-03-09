@@ -29,11 +29,16 @@ const tilePts = (col: number, row: number) => {
 }
 
 /** iso 矩形四個頂點（車子 / 建物用） */
-const isoCorners = (col: number, row: number, w: number, h: number) =>
-  ([-w, -h], [w, -h], [w, h], [-w, h] as [number, number][]).map(([dc, dr]) => [
+  const isoCorners = (col: number, row: number, w: number, h: number) =>
+  ([
+    [-w, -h],
+    [w, -h],
+    [w, h],
+    [-w, h]
+  ] as [number, number][]).map(([dc, dr]) => [
     OX + (col + dc - (row + dr)) * HW,
     OY + (col + dc + (row + dr)) * HH,
-  ] as [number, number])
+  ] as [number, number]);
 
 // 正確寫法（TypeScript tuple）
 const isoCorners2 = (col: number, row: number, w: number, h: number): [number, number][] => {
