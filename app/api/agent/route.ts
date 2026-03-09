@@ -1,51 +1,92 @@
-import Groq from 'groq-sdk'
+// =============================================
+// Groq RAG Agent API Route
+// RAG：每次回答前先從 DB 拉即時資料注入 prompt
+// 防幻覺：AI 只能根據提供的資料回答
+// =============================================
 import { NextRequest, NextResponse } from 'next/server'
-
-// 初始化 Groq，讀取環境變數中的 API key
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+import { groq, GROQ_MODEL } from '@/lib/groq'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, context } = await req.json()
+    const { message, lotId } = await req.json()
 
-    // system prompt 告訴 AI 它的角色和能力範圍
-    // context 是從前端傳進來的即時資料（車位狀態、停車場資訊）
+    // ─── RAG：從 DB 拉即時資料 ─────────────────
+    // 拉目前車位狀態（即時資料注入 prompt）
+    let spotsData = '無法取得車位資料'
+    let lotsData = '無法取得停車場資料'
+
+    const { data: spots } = await supabase
+      .from('parking_spots')
+      .select('spot_number, type, charger_power, status')
+      .eq('lot_id', lotId ?? '')
+      .limit(50)
+
+    const { data: lots } = await supabase
+      .from('parking_lots')
+      .select('name, address, total_spots')
+
+    if (spots) {
+      const available = spots.filter(s => s.status === 'available').length
+      const charging = spots.filter(s => s.status === 'charging').length
+      const occupied = spots.filter(s => s.status === 'occupied').length
+      const maintenance = spots.filter(s => s.status === 'maintenance').length
+
+      spotsData = `
+目前車位狀態（即時）：
+- 空閒：${available} 個
+- 充電中：${charging} 個
+- 使用中（未充電）：${occupied} 個
+- 維修中：${maintenance} 個
+- 總計：${spots.length} 個
+
+各車位詳細：
+${spots.map(s => `  車位 ${s.spot_number}:${s.status}，類型 ${s.type}，充電功率 ${s.charger_power ?? '無'}`).join('\n')}
+      `.trim()
+    }
+
+    if (lots) {
+      lotsData = lots.map(l => `${l.name}(${l.address}) 共 ${l.total_spots} 個車位`).join('\n')
+    }
+
+    // ─── System Prompt（防幻覺邊界）──────────────
     const systemPrompt = `
-你是一個電動車停車場的 AI 助理，名字叫「停車小幫手」。
-你可以幫助車主查詢車位、推薦停車場、回答充電相關問題。
-你也可以幫管理員分析停車場使用狀況。
-請用繁體中文回答，語氣親切簡潔。
+你是電動車停車場的 AI 助理。
 
-目前停車場即時資料：
-${context ?? '無即時資料'}
+【重要規則】
+1. 你只能根據下方「即時資料」回答停車場相關問題
+2. 日常閒聊（打招呼、天氣、感謝等）正常友善回應
+3. 用戶問停車場相關問題但資料中找不到時，回覆「系統目前沒有這項資料，請聯繫管理員」
+4. 不要建議資料以外的車位選項
+5. 回答簡短自然，用繁體中文
 
-注意事項：
-- 只回答停車場相關問題
-- 推薦車位時優先考慮充電需求
-- 不要編造不在資料中的資訊
-`
+【即時資料】
+停車場資訊：
+${lotsData}
 
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', // Groq 上最強的免費模型
+${spotsData}
+
+台電 TOU 電價（供計費參考）：
+- 尖峰（週一至週五 07:00-09:00, 17:00-22:00）：NT$4.91/kWh
+- 離峰（其他時段）：NT$2.08/kWh
+    `.trim()
+
+    // ─── 呼叫 Groq LLaMA 3 ────────────────────
+    const completion = await groq.chat.completions.create({
+      model: GROQ_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages,
+        { role: 'user', content: message },
       ],
-      max_tokens: 500, // 對話回覆不需要太長
-      temperature: 0.7, // 適度創意但不亂說
+      max_tokens: 300,
+      temperature: 0.3, // 低溫：讓回答更確定、不亂飄
     })
 
-    // 回傳 AI 的回覆內容
-    const reply = response.choices[0]?.message?.content ?? '抱歉，我無法回答這個問題。'
-    return NextResponse.json({ reply })
+    const reply = completion.choices[0]?.message?.content ?? '無法取得回應'
 
+    return NextResponse.json({ message: reply })
   } catch (error) {
-    console.error('Groq API error:', error)
-    return NextResponse.json(
-      { error: '服務暫時無法使用，請稍後再試' },
-      { status: 500 }
-    )
+    console.error('Agent error:', error)
+    return NextResponse.json({ error: '服務暫時無法使用' }, { status: 500 })
   }
 }

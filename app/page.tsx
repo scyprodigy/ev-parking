@@ -1,67 +1,123 @@
+// =============================================
+// app/page.tsx — 車主端首頁
+// Layer B：主系統層（Splash 結束後顯示）
+// S: 只負責組合佈局，邏輯在各元件內
+// =============================================
 'use client'
 
-import { useGetParkingLots } from '@/hooks/useGetParkingLots'
 import Link from 'next/link'
+import { useGetParkingLots } from '@/hooks/useGetParkingLots'
+import ChargingCard from '@/components/ChargingCard'
+import StatsGrid from '@/components/StatsGrid'
+import ParkingLotList from '@/components/ParkingLotList'
+import RecentHistory from '@/components/RecentHistory'
 
 export default function HomePage() {
-  const { lots, loading, error } = useGetParkingLots()
-
-  // 載入中狀態
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-gray-500">載入中...</p>
-    </div>
-  )
-
-  // 錯誤狀態，顯示錯誤訊息而不是讓頁面白屏
-  if (error) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-red-500">載入失敗：{error}</p>
-    </div>
-  )
+  const { lots, loading } = useGetParkingLots()
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      {/* 標題區 */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">電動車停車場</h1>
-        <p className="text-gray-500 mt-1">選擇停車場查看即時車位</p>
-      </div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
 
-      {/* 停車場列表 */}
-      <div className="flex flex-col gap-4">
-        {lots.map(lot => {
-          // 計算滿位率，給用戶一個直觀的判斷
-          const occupancyRate = lot.total_spots > 0
-            ? Math.round((lot.total_spots / lot.total_spots) * 100)
-            : 0
+      {/* ── Header ── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 20,
+        borderBottom: '1px solid var(--border)',
+        padding: '14px 24px',
+      }} className="glass">
+        <div style={{
+          maxWidth: '1200px', margin: '0 auto',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '22px' }}>⚡</span>
+            <span style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.1rem',
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              letterSpacing: '0.06em',
+            }}>
+              EV PARK
+            </span>
+          </div>
 
-          return (
-            <Link key={lot.id} href={`/lots/${lot.id}`}>
-              <div className="border rounded-xl p-5 hover:shadow-md transition cursor-pointer bg-white">
-                {/* 停車場名稱與地址 */}
-                <h2 className="text-lg font-semibold text-gray-800">{lot.name}</h2>
-                <p className="text-sm text-gray-500 mt-1">{lot.address}</p>
-
-                {/* 車位資訊 */}
-                <div className="flex items-center gap-4 mt-3">
-                  <span className="text-sm text-gray-600">
-                    總車位：<strong>{lot.total_spots}</strong>
-                  </span>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                    即時查看
-                  </span>
-                </div>
-              </div>
+          {/* Nav */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Link href="/dashboard" style={{
+              fontSize: '0.8rem',
+              color: 'var(--text-tertiary)',
+              textDecoration: 'none',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.05em',
+              transition: 'color 0.15s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+            >
+              管理後台
             </Link>
-          )
-        })}
 
-        {/* 沒有資料時的提示 */}
-        {lots.length === 0 && (
-          <p className="text-center text-gray-400 py-12">目前沒有停車場資料</p>
-        )}
-      </div>
-    </main>
+            {/* 用戶頭像 */}
+            <div style={{
+              width: '34px', height: '34px',
+              borderRadius: '50%',
+              background: 'var(--accent-dim)',
+              border: '1px solid var(--border-focus)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              color: '#fff',
+            }}>
+              王
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── 主內容：左右分層（lg 以上）── */}
+      <main
+        className="page-enter"
+        style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '28px 24px 100px',
+        }}
+      >
+        <style>{`
+          @media (min-width: 1024px) {
+            .home-grid {
+              display: grid !important;
+              grid-template-columns: 2fr 1fr !important;
+              gap: 24px !important;
+              align-items: start;
+            }
+          }
+        `}</style>
+
+        <div className="home-grid" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* ── 左欄：主視覺區 ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* 充電狀態大卡 */}
+            <ChargingCard />
+
+            {/* 停車場列表 */}
+            <ParkingLotList lots={lots} loading={loading} />
+          </div>
+
+          {/* ── 右欄：次要資訊 ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* 統計概覽 */}
+            <StatsGrid />
+
+            {/* 最近紀錄 */}
+            <RecentHistory />
+          </div>
+
+        </div>
+      </main>
+    </div>
   )
 }
