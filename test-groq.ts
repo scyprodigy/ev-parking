@@ -6,8 +6,9 @@ import Groq from 'groq-sdk';
 
 const apiKey = process.env.GROQ_API_KEY;
 
-// 稍微遮罩 API Key 輸出以確保安全
-console.log('Using API Key:', apiKey ? (apiKey.substring(0, 10) + '...') : 'MISSING');
+if (!process.env.GROQ_API_KEY) {
+  throw new Error('GROQ_API_KEY 未設定')
+}
 
 if (!apiKey) {
   console.error('Error: GROQ_API_KEY is not defined.');
